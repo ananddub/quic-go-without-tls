@@ -24,6 +24,51 @@ Support for WebTransport over HTTP/3 ([draft-ietf-webtrans-http3](https://datatr
 
 Detailed documentation can be found on [quic-go.net](https://quic-go.net/docs/).
 
+## No-TLS Mode (Optional)
+
+This fork adds support for running QUIC **without TLS encryption**. TLS is now optional — simply pass `nil` instead of a `*tls.Config` to skip TLS entirely.
+
+> **Warning:** No-TLS mode provides **no confidentiality or authentication**. Keys are derived from the connection ID, which is visible on the wire. Use this only for testing, development, or trusted network environments where encryption overhead is not desired.
+
+### How it works
+
+- When `tlsConf` is `nil`, a `noTLSCryptoSetup` is used instead of the standard TLS 1.3 handshake.
+- 1-RTT keys are derived from the connection ID using HKDF with a well-known salt (`"no-tls-quic-saltv1.0"`), so both sides can compute the same keys without any handshake round-trips.
+- Transport parameters are exchanged via Initial CRYPTO frames, just like standard QUIC.
+- The handshake completes as soon as both sides have received each other's transport parameters.
+- 0-RTT and session tickets are not supported in no-TLS mode.
+
+### Usage
+
+**Server (without TLS):**
+```go
+listener, err := quic.ListenAddr("localhost:4242", nil, nil)
+// ...
+conn, err := listener.Accept(context.Background())
+```
+
+**Client (without TLS):**
+```go
+conn, err := quic.DialAddr(context.Background(), "localhost:4242", nil, nil)
+```
+
+**With TLS (unchanged):**
+```go
+// Server
+listener, err := quic.ListenAddr("localhost:4242", tlsConf, nil)
+
+// Client
+conn, err := quic.DialAddr(context.Background(), "localhost:4242", tlsClientConf, nil)
+```
+
+### Key changes from upstream quic-go
+
+- `tls.Config` is no longer required — passing `nil` activates no-TLS mode.
+- New file: `internal/handshake/no_tls_crypto_setup.go` — implements the `CryptoSetup` interface without TLS.
+- Modified: `connection.go` — branches on `tlsConf == nil` to use `noTLSCryptoSetup`.
+- Modified: `transport.go` — removed the `tls.Config not set` error, nil-safe TLS config handling.
+- Modified: `client.go` — removed the nil TLS config check in `setupTransport`.
+
 ## Projects using quic-go
 
 | Project                                                   | Description                                                                                                                                                       | Stars                                                                                               |
