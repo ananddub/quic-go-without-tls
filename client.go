@@ -24,10 +24,7 @@ func DialAddr(ctx context.Context, addr string, tlsConf *tls.Config, conf *Confi
 	if err != nil {
 		return nil, err
 	}
-	tr, err := setupTransport(udpConn, true)
-	if err != nil {
-		return nil, err
-	}
+	tr := setupTransport(udpConn, true)
 	conn, err := tr.dial(ctx, udpAddr, addr, tlsConf, conf, false)
 	if err != nil {
 		tr.Close()
@@ -47,10 +44,7 @@ func DialAddrEarly(ctx context.Context, addr string, tlsConf *tls.Config, conf *
 	if err != nil {
 		return nil, err
 	}
-	tr, err := setupTransport(udpConn, true)
-	if err != nil {
-		return nil, err
-	}
+	tr := setupTransport(udpConn, true)
 	conn, err := tr.dial(ctx, udpAddr, addr, tlsConf, conf, true)
 	if err != nil {
 		tr.Close()
@@ -62,10 +56,7 @@ func DialAddrEarly(ctx context.Context, addr string, tlsConf *tls.Config, conf *
 // DialEarly establishes a new 0-RTT QUIC connection to a server using a net.PacketConn.
 // See [Dial] for more details.
 func DialEarly(ctx context.Context, c net.PacketConn, addr net.Addr, tlsConf *tls.Config, conf *Config) (*Conn, error) {
-	dl, err := setupTransport(c, false)
-	if err != nil {
-		return nil, err
-	}
+	dl := setupTransport(c, false)
 	conn, err := dl.DialEarly(ctx, addr, tlsConf, conf)
 	if err != nil {
 		dl.Close()
@@ -84,10 +75,7 @@ func DialEarly(ctx context.Context, c net.PacketConn, addr net.Addr, tlsConf *tl
 // which offers configuration options for a more fine-grained control of the connection establishment,
 // including reusing the underlying UDP socket for multiple QUIC connections.
 func Dial(ctx context.Context, c net.PacketConn, addr net.Addr, tlsConf *tls.Config, conf *Config) (*Conn, error) {
-	dl, err := setupTransport(c, false)
-	if err != nil {
-		return nil, err
-	}
+	dl := setupTransport(c, false)
 	conn, err := dl.Dial(ctx, addr, tlsConf, conf)
 	if err != nil {
 		dl.Close()
@@ -96,10 +84,10 @@ func Dial(ctx context.Context, c net.PacketConn, addr net.Addr, tlsConf *tls.Con
 	return conn, nil
 }
 
-func setupTransport(c net.PacketConn, createdPacketConn bool) (*Transport, error) {
+func setupTransport(c net.PacketConn, createdPacketConn bool) *Transport {
 	return &Transport{
 		Conn:        c,
 		createdConn: createdPacketConn,
 		isSingleUse: true,
-	}, nil
+	}
 }
