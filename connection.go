@@ -355,18 +355,30 @@ var newConnection = func(
 	if s.qlogger != nil {
 		s.qlogTransportParameters(params, protocol.PerspectiveServer, false)
 	}
-	cs := handshake.NewCryptoSetupServer(
-		clientDestConnID,
-		conn.LocalAddr(),
-		conn.RemoteAddr(),
-		params,
-		tlsConf,
-		conf.Allow0RTT,
-		s.rttStats,
-		s.qlogger,
-		logger,
-		s.version,
-	)
+	var cs handshake.CryptoSetup
+	if tlsConf != nil {
+		cs = handshake.NewCryptoSetupServer(
+			clientDestConnID,
+			conn.LocalAddr(),
+			conn.RemoteAddr(),
+			params,
+			tlsConf,
+			conf.Allow0RTT,
+			s.rttStats,
+			s.qlogger,
+			logger,
+			s.version,
+		)
+	} else {
+		cs = handshake.NewNoTLSCryptoSetupServer(
+			clientDestConnID,
+			params,
+			s.rttStats,
+			s.qlogger,
+			logger,
+			s.version,
+		)
+	}
 	s.cryptoStreamHandler = cs
 	s.packer = newPacketPacker(srcConnID, s.connIDManager.Get, s.initialStream, s.handshakeStream, s.sentPacketHandler, s.retransmissionQueue, cs, s.framer, &s.receivedPacketHandler, s.datagramQueue, s.perspective)
 	s.unpacker = newPacketUnpacker(cs, s.srcConnIDLen)
@@ -481,21 +493,33 @@ var newClientConnection = func(
 	if s.qlogger != nil {
 		s.qlogTransportParameters(params, protocol.PerspectiveClient, false)
 	}
-	cs := handshake.NewCryptoSetupClient(
-		destConnID,
-		params,
-		tlsConf,
-		enable0RTT,
-		s.rttStats,
-		s.qlogger,
-		logger,
-		s.version,
-	)
+	var cs handshake.CryptoSetup
+	if tlsConf != nil {
+		cs = handshake.NewCryptoSetupClient(
+			destConnID,
+			params,
+			tlsConf,
+			enable0RTT,
+			s.rttStats,
+			s.qlogger,
+			logger,
+			s.version,
+		)
+	} else {
+		cs = handshake.NewNoTLSCryptoSetupClient(
+			destConnID,
+			params,
+			s.rttStats,
+			s.qlogger,
+			logger,
+			s.version,
+		)
+	}
 	s.cryptoStreamHandler = cs
 	s.cryptoStreamManager = newCryptoStreamManager(s.initialStream, s.handshakeStream, oneRTTStream)
 	s.unpacker = newPacketUnpacker(cs, s.srcConnIDLen)
 	s.packer = newPacketPacker(srcConnID, s.connIDManager.Get, s.initialStream, s.handshakeStream, s.sentPacketHandler, s.retransmissionQueue, cs, s.framer, &s.receivedPacketHandler, s.datagramQueue, s.perspective)
-	if len(tlsConf.ServerName) > 0 {
+	if tlsConf != nil && len(tlsConf.ServerName) > 0 {
 		s.tokenStoreKey = tlsConf.ServerName
 	} else {
 		s.tokenStoreKey = conn.RemoteAddr().String()

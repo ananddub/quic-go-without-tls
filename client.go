@@ -3,7 +3,6 @@ package quic
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"net"
 
 	"github.com/quic-go/quic-go/internal/protocol"
@@ -98,9 +97,6 @@ func Dial(ctx context.Context, c net.PacketConn, addr net.Addr, tlsConf *tls.Con
 }
 
 func setupTransport(c net.PacketConn, tlsConf *tls.Config, createdPacketConn bool) (*Transport, error) {
-	if tlsConf == nil {
-		return nil, errors.New("quic: tls.Config not set")
-	}
 	return &Transport{
 		Conn:        c,
 		createdConn: createdPacketConn,

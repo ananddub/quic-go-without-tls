@@ -189,9 +189,6 @@ func (t *Transport) ListenEarly(tlsConf *tls.Config, conf *Config) (*EarlyListen
 }
 
 func (t *Transport) createServer(tlsConf *tls.Config, conf *Config, allow0RTT bool) (*baseServer, error) {
-	if tlsConf == nil {
-		return nil, errors.New("quic: tls.Config not set")
-	}
 	if err := validateConfig(conf); err != nil {
 		return nil, err
 	}
@@ -251,8 +248,10 @@ func (t *Transport) dial(ctx context.Context, addr net.Addr, host string, tlsCon
 		return nil, err
 	}
 	conf = populateConfig(conf)
-	tlsConf = tlsConf.Clone()
-	setTLSConfigServerName(tlsConf, addr, host)
+	if tlsConf != nil {
+		tlsConf = tlsConf.Clone()
+		setTLSConfigServerName(tlsConf, addr, host)
+	}
 	return t.doDial(ctx,
 		newSendConn(t.conn, addr, packetInfo{}, utils.DefaultLogger),
 		tlsConf,
@@ -295,7 +294,11 @@ func (t *Transport) doDial(
 	}
 
 	logger := utils.DefaultLogger.WithPrefix("client")
-	logger.Infof("Starting new connection to %s (%s -> %s), source connection ID %s, destination connection ID %s, version %s", tlsConf.ServerName, sendConn.LocalAddr(), sendConn.RemoteAddr(), srcConnID, destConnID, version)
+	serverName := ""
+	if tlsConf != nil {
+		serverName = tlsConf.ServerName
+	}
+	logger.Infof("Starting new connection to %s (%s -> %s), source connection ID %s, destination connection ID %s, version %s", serverName, sendConn.LocalAddr(), sendConn.RemoteAddr(), srcConnID, destConnID, version)
 
 	conn := newClientConnection(
 		context.WithoutCancel(ctx),
